@@ -63,6 +63,8 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 
 	static final int offset = 10;
 	static boolean testRouteSolver = false;
+	int maxx = 0;
+	int maxy = 0;
 	
 
 	public BaseManhattanConnectionRouter(IFeatureProvider fp) {
@@ -84,6 +86,13 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 		
 		sourceAnchor = this.connection.getStart();
 		targetAnchor = this.connection.getEnd();
+		
+		for(ContainerShape shape:findAllShapes()) {
+			int x = shape.getGraphicsAlgorithm().getWidth()+shape.getGraphicsAlgorithm().getX()+20;
+			if(x>maxx) maxx=x;
+			int y = shape.getGraphicsAlgorithm().getHeight()+shape.getGraphicsAlgorithm().getY()+20;
+			if(y>maxy) maxy=y;
+		}
 
 		
 		Point startP;
@@ -249,38 +258,17 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 
 			openset.remove(current);
 			closedset.add(current);
-			OUT:
 			for(Coordinate neighbor:neighborNodes(current)) {
-				if(closedset.contains(neighbor)) continue;
-				ContainerShape hadCollision = getCollision(current.asPoint(),
-						neighbor.asPoint());
-				
-				if(hadCollision!=null) {
-					continue;
-				}
-				
-				List<Connection> crossings = findCrossings(current.asPoint(), neighbor.asPoint());
-				for (Connection c : crossings) {
-					if (c!=this.connection){
-						break OUT;
+				Coordinate jumpPoint = jump(neighbor, current, goal);
+				if(jumpPoint!=null) {
+					if(closedset.contains(jumpPoint)) continue;
+					int tentative_g_score = heuristicCostEstimate(current, jumpPoint)+getGScore(current);
+					if(!openset.contains(jumpPoint) || getGScore(jumpPoint)==null || getGScore(jumpPoint) > tentative_g_score) {
+						g_score.put(jumpPoint, tentative_g_score);
+						f_score.put(jumpPoint, tentative_g_score+heuristicCostEstimate(jumpPoint, goal));
+						came_from.put(jumpPoint, current);
+						openset.add(jumpPoint);
 					}
-				}
-
-				
-				
-				int gScoreValue= Integer.valueOf(getGScore(current));
-				int tentative_g_score = gScoreValue + 10;
-				Coordinate parent = came_from.get(current);
-				if(parent!=null) {
-					if(current.x==parent.x&&neighbor.x!=current.x ||
-							current.y==parent.y&&neighbor.y!=current.y) tentative_g_score += 5;
-				}
-
-				if(!openset.contains(neighbor) || tentative_g_score<getGScore(neighbor)) {
-					openset.add(neighbor);
-					came_from.put(neighbor, current);
-					g_score.put(neighbor, tentative_g_score);
-					f_score.put(neighbor, tentative_g_score + heuristicCostEstimate(neighbor, goal));
 				}
 			}
 		}
@@ -294,14 +282,6 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 
 	private Integer getGScore(Coordinate start) {
 		Integer currentGScore = g_score.get(start);
-		if(currentGScore == null) {
-			currentGScore = 10;
-			Coordinate parent = came_from.get(start);
-			while(parent!=null) {
-				currentGScore += g_score.get(parent);
-				parent = came_from.get(parent);
-			}
-		}
 		return currentGScore;
 	}
 
@@ -385,7 +365,7 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 	}
 
 	private boolean walkable(Coordinate node) {
-		return node.x<Integer.MAX_VALUE && node.y<Integer.MAX_VALUE
+		return node.x<maxx && node.y<maxy
 				&& node.x>=0 && node.y>=0
 				&& getCollision(node.asPoint(),node.asPoint())==null;
 	}
