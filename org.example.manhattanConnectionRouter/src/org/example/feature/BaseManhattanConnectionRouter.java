@@ -12,6 +12,7 @@
  ******************************************************************************/
 package org.example.feature;
 
+import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -249,7 +250,7 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 			openset.remove(current);
 			closedset.add(current);
 			OUT:
-			for(Coordinate neighbor:neighborNodes(current, goal)) {
+			for(Coordinate neighbor:neighborNodes(current)) {
 				if(closedset.contains(neighbor)) continue;
 				ContainerShape hadCollision = getCollision(current.asPoint(),
 						neighbor.asPoint());
@@ -308,7 +309,7 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 		return Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
 	}
 
-	protected Coordinate lowestFScore(Map<Coordinate, Integer> f_score, Set<Coordinate>  openset) {
+	private Coordinate lowestFScore(Map<Coordinate, Integer> f_score, Set<Coordinate>  openset) {
 		Entry<Coordinate, Integer> min = null;
 		for(Entry<Coordinate, Integer> entry : f_score.entrySet()) {
 			if(openset.contains(entry.getKey()) && (min==null || min.getValue() > entry.getValue())) {
@@ -318,25 +319,75 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 		return min.getKey();
 	}
 
-	protected List<Coordinate> neighborNodes(Coordinate current, Coordinate goal) {
+	private List<Coordinate> neighborNodes(Coordinate current) {
 		List<Coordinate> list = new ArrayList<Coordinate>();
-		int heuristicCostEstimate  = remainingDistance(current, goal);
-		int step = heuristicCostEstimate > A_STEP ? A_STEP: heuristicCostEstimate;
-		list.add(new Coordinate(current.x+step, current.y));
-		if(current.x-step >= 0) list.add(new Coordinate(current.x-step, current.y));
-		list.add(new Coordinate(current.x, current.y+step));
-		if(current.y-step >= 0) list.add(new Coordinate(current.x, current.y-step));
+		Coordinate parent = came_from.get(current);
+		if(parent!=null) {
+			int dx = (current.x - parent.x) / Math.max(Math.abs(current.x - parent.x), 1);
+			int dy = (current.y - parent.y) / Math.max(Math.abs(current.y - parent.y), 1);
+			if(dx!=0) {
+				Coordinate neighbor1 = new Coordinate(current.x, current.y-1);
+				Coordinate neighbor2 = new Coordinate(current.x, current.y+1);
+				Coordinate neighbor3 = new Coordinate(current.x+dx, current.y);
+				if(walkable(neighbor1)) list.add(neighbor1);
+				if(walkable(neighbor2)) list.add(neighbor2);
+				if(walkable(neighbor3)) list.add(neighbor3);
+			}
+			else if(dy!=0) {
+				Coordinate neighbor1 = new Coordinate(current.x+1, current.y);
+				Coordinate neighbor2 = new Coordinate(current.x-1, current.y);
+				Coordinate neighbor3 = new Coordinate(current.x, current.y+dy);
+				if(walkable(neighbor1)) list.add(neighbor1);
+				if(walkable(neighbor2)) list.add(neighbor2);
+				if(walkable(neighbor3)) list.add(neighbor3);
+			}
+		}
+		else {
+			Coordinate neighbor1 = new Coordinate(current.x, current.y-1);
+			Coordinate neighbor2 = new Coordinate(current.x, current.y+1);
+			Coordinate neighbor3 = new Coordinate(current.x+1, current.y);
+			Coordinate neighbor4 = new Coordinate(current.x-1, current.y);
+			if(walkable(neighbor1)) list.add(neighbor1);
+			if(walkable(neighbor2)) list.add(neighbor2);
+			if(walkable(neighbor3)) list.add(neighbor3);
+			if(walkable(neighbor4)) list.add(neighbor4);
+		}
 		return list;
 	}
 	
-	private int remainingDistance(Coordinate a, Coordinate b){
-		if(a.x == b.x && a.y == b.y){
-			return 0;
-		} else if (a.x == b.x){
-			return Math.abs(a.y - b.y);
-		} else {
-			return Math.abs(a.x - b.x);
+	private Coordinate jump(Coordinate current, Coordinate neighbor, Coordinate goal) {
+		while(walkable(current)) {
+			int dx = current.x - neighbor.x;
+			int dy = current.y - neighbor.y;
+
+			if(current.equals(goal)) return current;
+
+			if(dx!=0) {
+				if((walkable(new Coordinate(current.x, current.y-1)) && !walkable(new Coordinate(current.x-dx, current.y-1))) ||
+						(walkable(new Coordinate(current.x, current.y+1)) && !walkable(new Coordinate(current.x-dx, current.y+1)))) {
+					return current;
+				}
+			} else if(dy!=0) {
+				if((walkable(new Coordinate(current.x-1, current.y)) && !walkable(new Coordinate(current.x-1, current.y-dy))) ||
+						(walkable(new Coordinate(current.x+1, current.y+1)) && !walkable(new Coordinate(current.x+1, current.y-dy)))) {
+					return current;
+				}
+
+				if(jump(new Coordinate(current.x+1, current.y), current, goal)!=null
+						|| jump(new Coordinate(current.x-1, current.y), current, goal)!=null) return current;
+			} else {
+				throw new InvalidParameterException("No diagonal movement allowed");
+			}
+			neighbor = current;
+			current = new Coordinate(current.x+dx, current.y+dy);
 		}
+		return null;
+	}
+
+	private boolean walkable(Coordinate node) {
+		return node.x<Integer.MAX_VALUE && node.y<Integer.MAX_VALUE
+				&& node.x>=0 && node.y>=0
+				&& getCollision(node.asPoint(),node.asPoint())==null;
 	}
 
 	protected List<Coordinate> reconstructPath(Map<Coordinate, Coordinate> came_from, Coordinate current) {
