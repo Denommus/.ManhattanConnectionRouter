@@ -19,7 +19,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 
 import org.eclipse.bpmn2.modeler.core.features.BendpointConnectionRouter;
@@ -50,7 +49,7 @@ import org.eclipse.graphiti.services.Graphiti;
  */
 public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 
-	private static final int A_STEP = 30;
+	private static final int A_STEP = 15;
 	protected LineSegment sourceTopEdge;
 	protected LineSegment sourceBottomEdge;
 	protected LineSegment sourceLeftEdge;
@@ -88,9 +87,9 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 		targetAnchor = this.connection.getEnd();
 		
 		for(ContainerShape shape:findAllShapes()) {
-			int x = shape.getGraphicsAlgorithm().getWidth()+shape.getGraphicsAlgorithm().getX()+20;
+			int x = Math.floorDiv(shape.getGraphicsAlgorithm().getWidth()+shape.getGraphicsAlgorithm().getX()+A_STEP*5, A_STEP);
 			if(x>maxx) maxx=x;
-			int y = shape.getGraphicsAlgorithm().getHeight()+shape.getGraphicsAlgorithm().getY()+20;
+			int y = Math.floorDiv(shape.getGraphicsAlgorithm().getHeight()+shape.getGraphicsAlgorithm().getY()+A_STEP*5, A_STEP);
 			if(y>maxy) maxy=y;
 		}
 
@@ -102,8 +101,8 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 		endP = GraphicsUtil.createPoint(targetAnchor);
 		int startModifier = AnchorUtil.getBoundaryAnchorLocation(sourceAnchor).equals(AnchorLocation.LEFT) ? -20 : 20;
 		int endModifier = AnchorUtil.getBoundaryAnchorLocation(targetAnchor).equals(AnchorLocation.LEFT) ? -20 : 20;
-		Coordinate start = new Coordinate(startP.getX()+startModifier, startP.getY());
-		Coordinate end = new Coordinate(endP.getX()+endModifier, endP.getY());
+		Coordinate start = new Coordinate(Math.floorDiv(startP.getX()+startModifier, A_STEP), Math.floorDiv(startP.getY(), A_STEP));
+		Coordinate end = new Coordinate(Math.floorDiv(endP.getX()+endModifier, A_STEP), Math.floorDiv(endP.getY(), A_STEP));
 		ConnectionRoute route = new ConnectionRoute(this, allRoutes.size()+1, source,target);
 
 		List<Coordinate> astarResult = aStar(start, end);
@@ -194,7 +193,7 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 		}
 		
 	    public Point asPoint(){
-	    	return GraphicsUtil.createPoint(x, y);
+	    	return GraphicsUtil.createPoint(x*A_STEP, y*A_STEP);
 	    }
 
 
@@ -231,8 +230,8 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 				getCollision(GraphicsUtil.createPoint(goal.x, goal.y),
 						GraphicsUtil.createPoint(goal.x, goal.y))!=null) {
 			List<Coordinate> alterResult = new ArrayList<Coordinate>();
-			alterResult.add(goal);
-			alterResult.add(start);
+			alterResult.add(new Coordinate(goal.x*A_STEP, goal.y*A_STEP));
+			alterResult.add(new Coordinate(start.x*A_STEP, start.y*A_STEP));
 			return alterResult;
 		}
 		
@@ -274,8 +273,8 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 		}
 
 		List<Coordinate> alterResult = new ArrayList<Coordinate>();
-		alterResult.add(goal);
-		alterResult.add(start);
+		alterResult.add(new Coordinate(goal.x*A_STEP, goal.y*A_STEP));
+		alterResult.add(new Coordinate(start.x*A_STEP, start.y*A_STEP));
 		return alterResult;
 	}
 
@@ -377,12 +376,12 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 		return true;
 	}
 
-	protected List<Coordinate> reconstructPath(Map<Coordinate, Coordinate> came_from, Coordinate current) {
+	private List<Coordinate> reconstructPath(Map<Coordinate, Coordinate> came_from, Coordinate current) {
 		List<Coordinate> totalPath = new ArrayList<Coordinate>();
-		totalPath.add(current);
+		totalPath.add(new Coordinate(current.x*A_STEP, current.y*A_STEP));
 		while(came_from.containsKey(current)) {
 			current = came_from.get(current);
-			totalPath.add(current);
+			totalPath.add(new Coordinate(current.x*A_STEP, current.y*A_STEP));
 		}
 		return totalPath;
 	}
