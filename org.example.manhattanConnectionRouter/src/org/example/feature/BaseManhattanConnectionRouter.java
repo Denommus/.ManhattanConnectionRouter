@@ -274,8 +274,8 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 		}
 
 		List<Coordinate> alterResult = new ArrayList<Coordinate>();
-		alterResult.add(start);
 		alterResult.add(goal);
+		alterResult.add(start);
 		return alterResult;
 	}
 
@@ -290,13 +290,16 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 	}
 
 	private Coordinate lowestFScore(Map<Coordinate, Integer> f_score, Set<Coordinate>  openset) {
-		Entry<Coordinate, Integer> min = null;
-		for(Entry<Coordinate, Integer> entry : f_score.entrySet()) {
-			if(openset.contains(entry.getKey()) && (min==null || min.getValue() > entry.getValue())) {
-				min = entry;
+		Coordinate minCoord = null;
+		Integer min = null;
+		for(Coordinate entry : openset) {
+			int f = f_score.get(entry);
+			if((min==null || min > f)) {
+				min = f;
+				minCoord = entry;
 			}
 		}
-		return min.getKey();
+		return minCoord;
 	}
 
 	private List<Coordinate> neighborNodes(Coordinate current) {
@@ -309,17 +312,17 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 				Coordinate neighbor1 = new Coordinate(current.x, current.y-1);
 				Coordinate neighbor2 = new Coordinate(current.x, current.y+1);
 				Coordinate neighbor3 = new Coordinate(current.x+dx, current.y);
-				if(walkable(neighbor1)) list.add(neighbor1);
-				if(walkable(neighbor2)) list.add(neighbor2);
-				if(walkable(neighbor3)) list.add(neighbor3);
+				if(walkable(neighbor1, current)) list.add(neighbor1);
+				if(walkable(neighbor2, current)) list.add(neighbor2);
+				if(walkable(neighbor3, current)) list.add(neighbor3);
 			}
 			else if(dy!=0) {
 				Coordinate neighbor1 = new Coordinate(current.x+1, current.y);
 				Coordinate neighbor2 = new Coordinate(current.x-1, current.y);
 				Coordinate neighbor3 = new Coordinate(current.x, current.y+dy);
-				if(walkable(neighbor1)) list.add(neighbor1);
-				if(walkable(neighbor2)) list.add(neighbor2);
-				if(walkable(neighbor3)) list.add(neighbor3);
+				if(walkable(neighbor1, current)) list.add(neighbor1);
+				if(walkable(neighbor2, current)) list.add(neighbor2);
+				if(walkable(neighbor3, current)) list.add(neighbor3);
 			}
 		}
 		else {
@@ -327,29 +330,29 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 			Coordinate neighbor2 = new Coordinate(current.x, current.y+1);
 			Coordinate neighbor3 = new Coordinate(current.x+1, current.y);
 			Coordinate neighbor4 = new Coordinate(current.x-1, current.y);
-			if(walkable(neighbor1)) list.add(neighbor1);
-			if(walkable(neighbor2)) list.add(neighbor2);
-			if(walkable(neighbor3)) list.add(neighbor3);
-			if(walkable(neighbor4)) list.add(neighbor4);
+			if(walkable(neighbor1, current)) list.add(neighbor1);
+			if(walkable(neighbor2, current)) list.add(neighbor2);
+			if(walkable(neighbor3, current)) list.add(neighbor3);
+			if(walkable(neighbor4, current)) list.add(neighbor4);
 		}
 		return list;
 	}
 	
 	private Coordinate jump(Coordinate current, Coordinate neighbor, Coordinate goal) {
-		while(walkable(current)) {
+		while(walkable(current, neighbor)) {
 			int dx = current.x - neighbor.x;
 			int dy = current.y - neighbor.y;
 
 			if(current.equals(goal)) return current;
 
 			if(dx!=0) {
-				if((walkable(new Coordinate(current.x, current.y-1)) && !walkable(new Coordinate(current.x-dx, current.y-1))) ||
-						(walkable(new Coordinate(current.x, current.y+1)) && !walkable(new Coordinate(current.x-dx, current.y+1)))) {
+				if((walkable(new Coordinate(current.x, current.y-1), current) && !walkable(new Coordinate(current.x-dx, current.y-1), current)) ||
+						(walkable(new Coordinate(current.x, current.y+1), current) && !walkable(new Coordinate(current.x-dx, current.y+1), current))) {
 					return current;
 				}
 			} else if(dy!=0) {
-				if((walkable(new Coordinate(current.x-1, current.y)) && !walkable(new Coordinate(current.x-1, current.y-dy))) ||
-						(walkable(new Coordinate(current.x+1, current.y+1)) && !walkable(new Coordinate(current.x+1, current.y-dy)))) {
+				if((walkable(new Coordinate(current.x-1, current.y), current) && !walkable(new Coordinate(current.x-1, current.y-dy), current)) ||
+						(walkable(new Coordinate(current.x+1, current.y+1), current) && !walkable(new Coordinate(current.x+1, current.y-dy), current))) {
 					return current;
 				}
 
@@ -364,10 +367,14 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 		return null;
 	}
 
-	private boolean walkable(Coordinate node) {
-		return node.x<maxx && node.y<maxy
-				&& node.x>=0 && node.y>=0
-				&& getCollision(node.asPoint(),node.asPoint())==null;
+	private boolean walkable(Coordinate node, Coordinate prev) {
+		if(node.x<0 || node.y<0 || node.x>maxx || node.y > maxy) return false;
+		if(getCollision(node.asPoint(),node.asPoint())!=null) return false;
+		List<Connection> crossings = findCrossings(node.asPoint(), prev.asPoint());
+		for(Connection c : crossings) {
+			if(c!=this.connection) return false;
+		}
+		return true;
 	}
 
 	protected List<Coordinate> reconstructPath(Map<Coordinate, Coordinate> came_from, Coordinate current) {
