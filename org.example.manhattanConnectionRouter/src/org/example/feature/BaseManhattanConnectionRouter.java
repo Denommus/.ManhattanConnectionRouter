@@ -101,7 +101,7 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 		endP = GraphicsUtil.createPoint(targetAnchor);
 		int startModifier = AnchorUtil.getBoundaryAnchorLocation(sourceAnchor).equals(AnchorLocation.LEFT) ? -A_STEP : A_STEP;
 		int endModifier = AnchorUtil.getBoundaryAnchorLocation(targetAnchor).equals(AnchorLocation.LEFT) ? -A_STEP : A_STEP;
-		Coordinate start = new Coordinate(Math.floorDiv(startP.getX()+startModifier, A_STEP), Math.floorDiv(startP.getY(), A_STEP));
+		Coordinate start = new Coordinate(Math.floorDiv(startP.getX()+startModifier, A_STEP)+1, Math.floorDiv(startP.getY(), A_STEP)+1);
 		Coordinate end = new Coordinate(Math.floorDiv(endP.getX()+endModifier, A_STEP), Math.floorDiv(endP.getY(), A_STEP));
 		ConnectionRoute route = new ConnectionRoute(this, allRoutes.size()+1, source,target);
 
@@ -151,6 +151,7 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 	public List<Point> calculateSegments(Point start, List<Coordinate> points, Point end) {
 		List<Point> result = new ArrayList<Point>();
 		result.add(start);
+		result.add(GraphicsUtil.createPoint(points.get(points.size()-1).x, start.getY()));
 		for (int i = points.size() - 1; i >= 0; i--) {
 			Coordinate curr = points.get(i);
 			if(i < 1 ){
@@ -172,6 +173,8 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 				result.add(GraphicsUtil.createPoint(curr.x, curr.y));
 			}
 		}
+
+		result.add(GraphicsUtil.createPoint(end.getX(), points.get(0).y));
 		result.add(end);
 		
 			
