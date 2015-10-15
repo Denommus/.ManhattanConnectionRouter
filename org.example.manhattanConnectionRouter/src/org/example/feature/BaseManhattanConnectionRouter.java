@@ -99,8 +99,8 @@ public class BaseManhattanConnectionRouter extends BendpointConnectionRouter {
 
 		startP = GraphicsUtil.createPoint(sourceAnchor);
 		endP = GraphicsUtil.createPoint(targetAnchor);
-		int startModifier = AnchorUtil.getBoundaryAnchorLocation(sourceAnchor).equals(AnchorLocation.LEFT) ? -20 : 20;
-		int endModifier = AnchorUtil.getBoundaryAnchorLocation(targetAnchor).equals(AnchorLocation.LEFT) ? -20 : 20;
+		int startModifier = AnchorUtil.getBoundaryAnchorLocation(sourceAnchor).equals(AnchorLocation.LEFT) ? -A_STEP : A_STEP;
+		int endModifier = AnchorUtil.getBoundaryAnchorLocation(targetAnchor).equals(AnchorLocation.LEFT) ? -A_STEP : A_STEP;
 		Coordinate start = new Coordinate(Math.floorDiv(startP.getX()+startModifier, A_STEP), Math.floorDiv(startP.getY(), A_STEP));
 		Coordinate end = new Coordinate(Math.floorDiv(endP.getX()+endModifier, A_STEP), Math.floorDiv(endP.getY(), A_STEP));
 		ConnectionRoute route = new ConnectionRoute(this, allRoutes.size()+1, source,target);
